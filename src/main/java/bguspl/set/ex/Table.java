@@ -112,9 +112,28 @@ public class Table {
         } catch (InterruptedException ignored) {}
 
         // TODO implement
-        int toRemove = slotToCard[slot];
         slotToCard[slot] = null;
-        cardToSlot[toRemove] = null;
+        int toRemove = slotToCard[slot]; //gets card id
+        int cardIndex = fromCardIdToIndex(toRemove);
+        cardToSlot[cardIndex] = null;
+    }
+
+    //TODO : check
+    //Added by Ariel
+    //This function gets card id and returns its index in cardToSlot
+    private int fromCardIdToIndex(int id)
+    {
+        //assume we got legal cardId
+        int output = 0;
+        int pow = 0;
+        while(id>0)
+        {
+            int toAdd = (id%10)*(int)Math.pow(3,pow);
+            output = output + toAdd;
+            id = id/10;
+            pow = pow + 1;
+        }
+        return output;
     }
 
     /**
