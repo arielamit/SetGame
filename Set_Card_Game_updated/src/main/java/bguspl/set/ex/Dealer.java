@@ -323,20 +323,20 @@ public class Dealer implements Runnable {
      */
     public void removeAllTokensOfSlot (int slot)
     {
-        List<Integer> list = new ArrayList<>();
+        List<Integer> allTokensList = new ArrayList<>();
+        List<Integer> removeListTokens = new ArrayList<>();
         for(Player p : players)
         {
             synchronized (p)
             {
-                list =  p.playerTokens;
-                for (Integer i : list) {
+                allTokensList =  p.playerTokens;
+                for (Integer i : allTokensList) {
                     if (i == slot) {
-                        p.shouldRemoveToken = true;
-                        p.tokenToRemove = slot;
-
+                        removeListTokens.add(i);
                     }
                 }
-                p.notifyAll();
+                for (Integer j :removeListTokens )
+                    p.playerTokens.remove(j);
             }
         }
     }

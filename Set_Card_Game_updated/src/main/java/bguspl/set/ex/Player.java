@@ -62,8 +62,7 @@ public class Player implements Runnable {
     public Dealer dealer;
     private boolean shouldPunished ;
     public ArrayList<Integer> playerTokens ;
-    boolean shouldRemoveToken = false ;
-    public int tokenToRemove ;
+
 
     /**
      * The class constructor.
@@ -105,17 +104,6 @@ public class Player implements Runnable {
                 //    key = cheatKey();
                 System.out.println("key " + key);
                 //Check if there is a token that needs to be removed
-                if(shouldRemoveToken)
-                {
-                    if (playerTokens.contains(tokenToRemove))
-                    {
-                        System.out.println("I remove my token " + id );
-                        playerTokens.remove(tokenToRemove);
-                        table.removeToken(id,tokenToRemove);
-                        shouldRemoveToken = false;
-                        System.out.println("1454544");
-                    }
-                }
 
                 if (playerTokens.contains(key)) {
                     playerTokens.remove(key);
