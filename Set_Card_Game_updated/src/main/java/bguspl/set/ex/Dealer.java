@@ -54,8 +54,8 @@ public class Dealer implements Runnable {
         this.players = players;
         deck = IntStream.range(0, env.config.deckSize).boxed().collect(Collectors.toList());
         long gameStartTime;
+        reshuffleTime = env.config.turnTimeoutMillis + System.currentTimeMillis();
     }
-
 
     // creates thread for each player
     private void createPlayers() {
@@ -158,6 +158,7 @@ public class Dealer implements Runnable {
         {
             for (int i = 0; i < slotToCard.length; i++) { //check each slot
                 if (slotToCard[i] == null && deck.size() > 0) {//no card in this place and at least one card on deck
+                    updateTimerDisplay(false);
                     //take random card from deck and place it on table
                     double rnd = Math.random();
                     int cardToPlace = 0;
@@ -176,19 +177,13 @@ public class Dealer implements Runnable {
     private void sleepUntilWokenOrTimeout() {
         try {
             synchronized (this) {
-                //TODO : find out dealer sleep time
                 this.wait(1000);
             }
             // Check if there are any possible set's
             if (table.waitingForCheck.size() > 0) {
-                int claimPlayerId = table.waitingForCheck.take();
-                Player claimPlayer = null;
-                // find the claim player and sync him for penalty/point
-                for (Player p : players)
-                    if (p.id == claimPlayerId)
-                        claimPlayer = p;
-
-                synchronized (claimPlayer) {
+                Player claimPlayer = getPlayerById(table.waitingForCheck.take());
+                synchronized (claimPlayer)
+                {
                     int[] tokensPlace = listToArray(claimPlayer.playerTokens); //the place of tokens of this player
                     int[] possibleSet = new int[tokensPlace.length]; //cards that player put tokens on
                     boolean validCards = true;
@@ -198,16 +193,13 @@ public class Dealer implements Runnable {
                         validCards = ((Integer)table.slotToCard[tokensPlace[j]] != null);
                         possibleSet[j] = table.slotToCard[tokensPlace[j]];
                     }
-
                     //check if there are some duplicates values and that the set has valid size
                     boolean equalsValues = (possibleSet.length != env.config.featureSize || !validCards);
                     for(int l=0; l< possibleSet.length-1 && !equalsValues; l++)
                         if(possibleSet[l] == possibleSet[l+1])
                             equalsValues = true;
-
                     //clear all pressed keys
                     claimPlayer.keyPressed.clear();
-
                     //Adding the slots that need to be removed
                     for (Integer i : claimPlayer.playerTokens)
                         slotsToClear.add(i);
@@ -215,31 +207,43 @@ public class Dealer implements Runnable {
                         System.out.println("True set " + claimPlayer.getId());
                         System.out.println(Arrays.toString(possibleSet) );
                         //clear all tokens,of certain player, from the table
-                        while (claimPlayer.playerTokens.size() > 0)
-                        {
-                            System.out.println("While " + claimPlayer.getId() );
-                            System.out.println(" While " + claimPlayer.playerTokens.get(0));
-                            table.removeToken(claimPlayer.getId(), claimPlayer.playerTokens.get(0));
-                            claimPlayer.playerTokens.remove(0);
-                        }
+                        removeAllTokensOfPlayer(claimPlayer);
+
+//                        while (claimPlayer.playerTokens.size() > 0)
+//                        {
+////                            System.out.println("While " + claimPlayer.getId() );
+////                            System.out.println(" While " + claimPlayer.playerTokens.get(0));
+//                            updateTimerDisplay(false);
+//                            table.removeToken(claimPlayer.getId(), claimPlayer.playerTokens.get(0));
+//                            claimPlayer.playerTokens.remove(0);
+//                        }
+
+
                         //clear valid set cards from the table
                         removeCardsFromTable();
                         slotsToClear.clear();
                         claimPlayer.setPoint();
                         updateTimerDisplay(false);
-                    // if the dealer removed a token of waiting player the player should not be punished or reward
-                    }else if(equalsValues)
-                    {
-                        System.out.println("Not False and not True set id: "+claimPlayerId);
-                        //clear all tokens,of certain player, from the table
-                        while (claimPlayer.playerTokens.size() > 0)
-                        {
-                            table.removeToken(claimPlayer.getId(), claimPlayer.playerTokens.get(0));
-                            claimPlayer.playerTokens.remove(0);
-                        }
+                        // if the dealer removed a token of waiting player the player should not be punished or reward
                     }
-                    else {
-                        System.out.println("False set id: "+claimPlayerId);
+                    else if(equalsValues)
+                    {
+                        System.out.println("Not False and not True set id: "+claimPlayer.getId());
+                        //clear all tokens,of certain player, from the table
+                        removeAllTokensOfPlayer(claimPlayer);
+
+
+//                        while (claimPlayer.playerTokens.size() > 0)
+//                        {
+//                            table.removeToken(claimPlayer.getId(), claimPlayer.playerTokens.get(0));
+//                            claimPlayer.playerTokens.remove(0);
+//                        }
+
+
+                    }
+                    else
+                    {
+                        System.out.println("False set id: "+claimPlayer.getId());
                         claimPlayer.setPunish();
                         slotsToClear.clear();
                     }
@@ -251,6 +255,13 @@ public class Dealer implements Runnable {
             System.out.println("dealer.run " + e.getMessage());
             System.err.println(e);
         };
+    }
+
+    private Player getPlayerById(int id) {
+        for(int i=0; i<players.length; i++)
+            if(players[i].getId() == id)
+                return players[i];
+        return null;
     }
 
     /**
@@ -273,27 +284,36 @@ public class Dealer implements Runnable {
      * Returns all the cards from the table to the deck.
      */
     private void removeAllCardsFromTable() {
+        // firstly we remove all tokens
+        for (int j = 0; j < players.length; j++)
+            removeAllTokensOfPlayer(players[j]);
+        // secondly we remove all cards from the table
         for (int i = 0; i < table.slotToCard.length; i++) {
             if (table.slotToCard[i] != null) {
                 Integer cardToRemove = table.slotToCard[i];
                 deck.add(cardToRemove);
                 table.removeCard(i);
-                for (int j = 0; j < players.length; j++)
-                    removeAllTokensOfPlayer(players[j]);
             }
         }
     }
 
     private void removeAllTokensOfPlayer(Player p) {
         //clear all tokens from the table
-        while (p.playerTokens.size() > 0)
+        synchronized (p)
         {
-            table.removeToken(p.getId(), p.playerTokens.get(0));
-            p.playerTokens.remove(0);
+            List<Integer> removeListTokens = new ArrayList<>();
+            for(Integer i : p.playerTokens)
+                removeListTokens.add(i);
+            for (Integer j : removeListTokens)
+            {
+                table.removeToken(p.getId(), j);
+                p.playerTokens.remove(j);
+            }
+            //clear all pressed keys
+            p.keyPressed.clear();
         }
-        //clear all pressed keys
-        p.keyPressed.clear();
     }
+
 
     /**
      * Check who is/are the winner/s and displays them.
@@ -301,10 +321,10 @@ public class Dealer implements Runnable {
     private void announceWinners() {
         int[] playersScores = new int[players.length];
         int maxScore = 0;
-        for (int i = 0; i < playersScores.length; i++) {
-            //TODO : change get score to score
+        for (int i = 0; i < playersScores.length; i++)
+        {
             playersScores[i] = players[i].score();
-            if (maxScore <= playersScores[i])
+            if (maxScore < playersScores[i])
                 maxScore = playersScores[i];
         }
         int numOfWinners = 0;
@@ -340,11 +360,9 @@ public class Dealer implements Runnable {
             synchronized (p)
             {
                 allTokensList =  p.playerTokens;
-                for (Integer i : allTokensList) {
-                    if (i == slot) {
+                for (Integer i : allTokensList)
+                    if (i == slot)
                         removeListTokens.add(i);
-                    }
-                }
                 for (Integer j :removeListTokens )
                 {
                     p.playerTokens.remove(j);

@@ -104,42 +104,45 @@ public class Player implements Runnable {
                 //Integer key = keyPressedSimulator();
                 //if(this.id == 0)
                 //    key = cheatKey();
-                System.out.println("key " + key);
+//                System.out.println("key " + key);
                 //Check if there is a token that needs to be removed
-
-                if (playerTokens.contains(key)) {
-                    playerTokens.remove(key);
-                    table.removeToken(id,key);
-                    System.out.println("Remove TOKEN id: " + id);
-                }
-                else // The token is not exist
+                synchronized (this)
                 {
-                    if(playerTokens.size() < env.config.featureSize && table.slotToCard[key]!= null) {
-                        playerTokens.add(key);
-                        table.placeToken(id,key);
-                        System.out.println("Add TOKEN id: " + id);
-                        //insures that set sent to dealer even if new token placed
-                        if (playerTokens.size() == env.config.featureSize) {
-                            table.waitingForCheck.put(id);
-                            synchronized (dealer){
-                                try {
-                                    dealer.notifyAll();
-                                } catch (Exception e) {
-                                    System.out.println(e.getMessage());
+                    if (playerTokens.contains(key)) {
+                        playerTokens.remove(key);
+                        table.removeToken(id,key);
+//                    System.out.println("Remove TOKEN id: " + id);
+                    }
+                    else // The token is not exist
+                    {
+                        if(playerTokens.size() < env.config.featureSize && table.slotToCard[key]!= null) {
+                            playerTokens.add(key);
+                            table.placeToken(id,key);
+                            System.out.println("Add TOKEN id: " + id);
+                            //insures that set sent to dealer even if new token placed
+                            if (playerTokens.size() == env.config.featureSize) {
+                                table.waitingForCheck.put(id);
+                                synchronized (dealer){
+                                    try {
+                                        dealer.notifyAll();
+                                    } catch (Exception e) {
+                                        System.out.println(e.getMessage());
+                                    }
                                 }
-                            }
-                            synchronized (this) {
-                                try {
-                                    wait();
-                                } catch (InterruptedException e) {}
-                                if (shouldPunished)
-                                    penalty();
-                                if(shouldPoint)
-                                    point();
+                                synchronized (this) {
+                                    try {
+                                        wait();
+                                    } catch (InterruptedException e) {}
+                                    if (shouldPunished)
+                                        penalty();
+                                    if(shouldPoint)
+                                        point();
+                                }
                             }
                         }
                     }
                 }
+
             }
             catch (Exception e) {}
         }
