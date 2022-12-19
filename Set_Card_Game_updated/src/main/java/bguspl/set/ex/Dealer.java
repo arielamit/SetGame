@@ -199,9 +199,8 @@ public class Dealer implements Runnable {
                         possibleSet[j] = table.slotToCard[tokensPlace[j]];
                     }
 
-                    //TODO : DELETE - maybe replace with syncronize
                     //check if there are some duplicates values and that the set has valid size
-                    boolean equalsValues = (possibleSet.length != env.config.featureSize);
+                    boolean equalsValues = (possibleSet.length != env.config.featureSize || !validCards);
                     for(int l=0; l< possibleSet.length-1 && !equalsValues; l++)
                         if(possibleSet[l] == possibleSet[l+1])
                             equalsValues = true;
@@ -226,7 +225,18 @@ public class Dealer implements Runnable {
                         //clear valid set cards from the table
                         removeCardsFromTable();
                         slotsToClear.clear();
-                        updateTimerDisplay(true);
+                        claimPlayer.setPoint();
+                        updateTimerDisplay(false);
+                    // if the dealer removed a token of waiting player the player should not be punished or reward
+                    }else if(equalsValues)
+                    {
+                        System.out.println("Not False and not True set id: "+claimPlayerId);
+                        //clear all tokens,of certain player, from the table
+                        while (claimPlayer.playerTokens.size() > 0)
+                        {
+                            table.removeToken(claimPlayer.getId(), claimPlayer.playerTokens.get(0));
+                            claimPlayer.playerTokens.remove(0);
+                        }
                     }
                     else {
                         System.out.println("False set id: "+claimPlayerId);
@@ -336,7 +346,10 @@ public class Dealer implements Runnable {
                     }
                 }
                 for (Integer j :removeListTokens )
+                {
                     p.playerTokens.remove(j);
+                    table.removeToken(p.id, j);
+                }
             }
         }
     }

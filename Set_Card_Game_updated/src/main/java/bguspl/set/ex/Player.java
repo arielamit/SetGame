@@ -61,6 +61,7 @@ public class Player implements Runnable {
     public BlockingQueue<Integer> keyPressed;
     public Dealer dealer;
     private boolean shouldPunished ;
+    private boolean shouldPoint;
     public ArrayList<Integer> playerTokens ;
 
 
@@ -82,6 +83,7 @@ public class Player implements Runnable {
         this.dealer = dealer;
         this.keyPressed = new LinkedBlockingQueue<Integer>(env.config.featureSize);
         this.shouldPunished = false;
+        this.shouldPoint = false;
         this.playerTokens = new ArrayList<Integer>(env.config.featureSize);
     }
 
@@ -112,7 +114,7 @@ public class Player implements Runnable {
                 }
                 else // The token is not exist
                 {
-                    if(playerTokens.size() < env.config.featureSize) {
+                    if(playerTokens.size() < env.config.featureSize && table.slotToCard[key]!= null) {
                         playerTokens.add(key);
                         table.placeToken(id,key);
                         System.out.println("Add TOKEN id: " + id);
@@ -132,7 +134,7 @@ public class Player implements Runnable {
                                 } catch (InterruptedException e) {}
                                 if (shouldPunished)
                                     penalty();
-                                else
+                                if(shouldPoint)
                                     point();
                             }
                         }
@@ -219,6 +221,7 @@ public class Player implements Runnable {
             playerThread.sleep(env.config.pointFreezeMillis);
         }catch (InterruptedException e){}
         env.ui.setFreeze(this.id,0);
+        shouldPoint = false;
     }
 
     /**
@@ -254,4 +257,6 @@ public class Player implements Runnable {
         }
         return output;
     }
+
+    public void setPoint() { shouldPoint = true;}
 }
