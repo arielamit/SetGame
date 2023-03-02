@@ -1,4 +1,4 @@
-# UniversityCourseSetGame
+# SetGame
 Assignment of the course Systems Programming in BGU.
 In this assignment we created a multi-threaded implementation of the Set Game in Java.
 The main goal of this assignment was to learn how to use shared resources using multiple threads, while keeping the program as efficient as possible.
